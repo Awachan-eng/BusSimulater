@@ -3,6 +3,7 @@ import { createWorld } from "./world.js";
 import { createBus, resetBus, updateBus } from "./bus.js";
 import { createCameraRig } from "./cameras.js";
 import { createControls } from "./controls.js";
+import { getSetting, setSetting } from "./save.js";
 
 const modeNames = {
   career: "キャリアモード",
@@ -13,6 +14,7 @@ const modeNames = {
 const canvas = document.getElementById("game-canvas");
 const speedEl = document.getElementById("speed-display");
 const cameraButton = document.getElementById("btn-camera");
+const controlButton = document.getElementById("btn-control");
 const controls = createControls();
 const clock = new THREE.Clock();
 
@@ -23,6 +25,14 @@ let bus = null;
 let rig = null;
 let running = false;
 let frameId = 0;
+
+function applyControlMode(mode) {
+  controls.setMode(mode);
+  setSetting("controlMode", controls.getMode());
+  document.querySelectorAll("[data-control]").forEach((btn) => {
+    btn.classList.toggle("selected", btn.dataset.control === controls.getMode());
+  });
+}
 
 function initGame() {
   if (renderer) return;
@@ -115,9 +125,20 @@ document.querySelectorAll("[data-mode]").forEach((btn) => {
   });
 });
 
+document.querySelectorAll("[data-control]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    applyControlMode(btn.dataset.control);
+  });
+});
+
 cameraButton.addEventListener("click", () => {
   if (rig) rig.toggle();
   cameraButton.blur();
+});
+
+controlButton.addEventListener("click", () => {
+  applyControlMode(controls.getMode() === "button" ? "wheel" : "button");
+  controlButton.blur();
 });
 
 document.addEventListener("keydown", (e) => {
@@ -131,4 +152,5 @@ window.addEventListener("orientationchange", () => {
   setTimeout(resize, 200);
 });
 
+applyControlMode(getSetting("controlMode") === "wheel" ? "wheel" : "button");
 showScreen("title");
