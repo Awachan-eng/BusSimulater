@@ -9,7 +9,7 @@ export function createWorld(scene) {
   scene.add(sun);
 
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(1000, 1000),
+    new THREE.PlaneGeometry(2000, 2000),
     new THREE.MeshLambertMaterial({ color: 0x4caf50 })
   );
   ground.rotation.x = -Math.PI / 2;
@@ -24,31 +24,33 @@ export function createWorld(scene) {
   scene.add(road);
 
   const lineMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const dashGeometry = new THREE.BoxGeometry(0.2, 0.02, 3);
 
-  for (let z = -240; z <= 240; z += 8) {
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 3), lineMaterial);
+  for (let z = -480; z <= 480; z += 8) {
+    const dash = new THREE.Mesh(dashGeometry, lineMaterial);
     dash.position.set(0, 0.02, z);
     scene.add(dash);
   }
 
+  const edgeGeometry = new THREE.BoxGeometry(0.15, 0.02, 1000);
+
   [-4.7, 4.7].forEach((x) => {
-    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 1000), lineMaterial);
+    const edge = new THREE.Mesh(edgeGeometry, lineMaterial);
     edge.position.set(x, 0.02, 0);
     scene.add(edge);
   });
 
   const heights = [8, 14, 10, 18, 12, 9, 16];
   const colors = [0xb0bec5, 0x90a4ae, 0xcfd8dc, 0xa1887f, 0xbcaaa4];
+  const materials = colors.map((c) => new THREE.MeshLambertMaterial({ color: c }));
 
-  for (let i = -10; i <= 10; i++) {
+  for (let i = -24; i <= 24; i++) {
     [-1, 1].forEach((side) => {
-      const h = heights[(i + 10 + (side === 1 ? 3 : 0)) % heights.length];
-      const color = colors[(i + 10 + (side === 1 ? 2 : 0)) % colors.length];
-      const building = new THREE.Mesh(
-        new THREE.BoxGeometry(8, h, 10),
-        new THREE.MeshLambertMaterial({ color: color })
-      );
-      building.position.set(side * (14 + ((i + 10) % 3) * 3), h / 2, i * 20);
+      const index = i + 24 + (side === 1 ? 3 : 0);
+      const h = heights[index % heights.length];
+      const material = materials[(i + 24 + (side === 1 ? 2 : 0)) % materials.length];
+      const building = new THREE.Mesh(new THREE.BoxGeometry(8, h, 10), material);
+      building.position.set(side * (14 + ((i + 24) % 3) * 3), h / 2, i * 20);
       scene.add(building);
     });
   }
