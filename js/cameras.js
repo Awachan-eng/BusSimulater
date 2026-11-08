@@ -10,8 +10,16 @@ export function createCameraRig(camera, bus) {
   function place(dt, snap) {
     const heading = bus.rotation.y;
     forward.set(-Math.sin(heading), 0, -Math.cos(heading));
-    bus.visible = mode !== "driver";
+
+    bus.userData.exterior.visible = mode !== "driver";
+    bus.userData.cockpit.visible = mode === "driver";
     bus.updateMatrixWorld(true);
+
+    const fov = mode === "driver" ? 75 : 60;
+    if (camera.fov !== fov) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
 
     if (mode === "chase") {
       target.copy(bus.position).addScaledVector(forward, -15);
@@ -25,10 +33,10 @@ export function createCameraRig(camera, bus) {
       look.y = 2;
       camera.lookAt(look);
     } else {
-      target.set(0.7, 2.7, -4.0);
+      target.set(0.7, 2.6, -3.4);
       bus.localToWorld(target);
       camera.position.copy(target);
-      look.set(0.7, 2.6, -30);
+      look.set(0.7, 2.45, -30);
       bus.localToWorld(look);
       camera.lookAt(look);
     }
