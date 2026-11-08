@@ -1,3 +1,5 @@
+import { STEER } from "./data.js";
+
 export function createControls() {
   const touch = { left: false, right: false, accel: false, brake: false };
   const key = { left: false, right: false, accel: false, brake: false };
@@ -15,7 +17,7 @@ export function createControls() {
     Space: "brake"
   };
 
-  const maxAngle = (150 * Math.PI) / 180;
+  const maxAngle = (STEER.maxDegrees * Math.PI) / 180;
   const root = document.getElementById("screen-game");
   const wheelEl = document.getElementById("steer-wheel");
 
@@ -23,8 +25,8 @@ export function createControls() {
   let dragging = false;
   let centerX = 0;
   let centerY = 0;
-  let startPointer = 0;
-  let startAngle = 0;
+  let lastPointer = 0;
+  let wheelAngle = 0;
 
   function bindButton(id, name) {
     const el = document.getElementById(id);
@@ -62,19 +64,21 @@ export function createControls() {
     const rect = wheelEl.getBoundingClientRect();
     centerX = rect.left + rect.width / 2;
     centerY = rect.top + rect.height / 2;
-    startPointer = pointerAngle(e);
-    startAngle = input.steer * maxAngle;
+    lastPointer = pointerAngle(e);
+    wheelAngle = input.steer * maxAngle;
     dragging = true;
     wheelEl.setPointerCapture(e.pointerId);
   });
 
   wheelEl.addEventListener("pointermove", (e) => {
     if (!dragging) return;
-    let delta = pointerAngle(e) - startPointer;
+    const current = pointerAngle(e);
+    let delta = current - lastPointer;
     while (delta > Math.PI) delta -= Math.PI * 2;
     while (delta < -Math.PI) delta += Math.PI * 2;
-    const angle = Math.max(-maxAngle, Math.min(maxAngle, startAngle + delta));
-    input.steer = angle / maxAngle;
+    lastPointer = current;
+    wheelAngle = Math.max(-maxAngle, Math.min(maxAngle, wheelAngle + delta));
+    input.steer = wheelAngle / maxAngle;
   });
 
   wheelEl.addEventListener("pointerup", releaseWheel);
@@ -101,7 +105,7 @@ export function createControls() {
   });
 
   function showWheel() {
-    wheelEl.style.transform = "rotate(" + ((input.steer * maxAngle * 180) / Math.PI) + "deg)";
+    wheelEl.style.transform = "rotate(" + input.steer * STEER.maxDegrees + "deg)";
   }
 
   function update(dt) {
@@ -133,6 +137,7 @@ export function createControls() {
       key[name] = false;
     });
     dragging = false;
+    wheelAngle = 0;
     input.throttle = 0;
     input.brake = 0;
     input.steer = 0;
