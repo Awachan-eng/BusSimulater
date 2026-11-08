@@ -21,10 +21,12 @@ const clock = new THREE.Clock();
 let renderer = null;
 let scene = null;
 let camera = null;
+let world = null;
 let bus = null;
 let rig = null;
 let running = false;
 let frameId = 0;
+let gameTime = 0;
 
 function applyControlMode(mode) {
   controls.setMode(mode);
@@ -42,7 +44,7 @@ function initGame() {
   scene.background = new THREE.Color(0x87ceeb);
   scene.fog = new THREE.Fog(0x87ceeb, 80, 320);
   camera = new THREE.PerspectiveCamera(60, 1, 0.1, 600);
-  createWorld(scene);
+  world = createWorld(scene);
   bus = createBus(0xf2c94c);
   scene.add(bus);
   rig = createCameraRig(camera, bus);
@@ -62,8 +64,10 @@ function loop() {
   if (!running) return;
   frameId = requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), 0.05);
+  gameTime += dt;
   controls.update(dt);
   updateBus(bus, controls.input, dt);
+  world.update(gameTime);
   rig.update(dt);
   speedEl.textContent = Math.round(bus.userData.speed * 3.6) + " km/h";
   renderer.render(scene, camera);
@@ -72,7 +76,8 @@ function loop() {
 function startGame() {
   initGame();
   resize();
-  resetBus(bus, 0, 400, 0);
+  gameTime = 0;
+  resetBus(bus, -3, 180, 0);
   controls.reset();
   rig.snap();
   clock.getDelta();
