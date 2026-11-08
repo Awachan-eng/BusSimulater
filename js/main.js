@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { createWorld } from "./world.js";
-import { createBus } from "./bus.js";
+import { createBus, resetBus, updateBus } from "./bus.js";
+import { createCameraRig } from "./cameras.js";
+import { createControls } from "./controls.js";
 
 const modeNames = {
   career: "キャリアモード",
@@ -9,13 +11,18 @@ const modeNames = {
 };
 
 const canvas = document.getElementById("game-canvas");
+const speedEl = document.getElementById("speed-display");
+const cameraButton = document.getElementById("btn-camera");
+const controls = createControls();
+const clock = new THREE.Clock();
 
 let renderer = null;
 let scene = null;
 let camera = null;
 let bus = null;
+let rig = null;
 let running = false;
-let angle = 0;
+let frameId = 0;
 
 function initGame() {
   if (renderer) return;
@@ -28,6 +35,7 @@ function initGame() {
   createWorld(scene);
   bus = createBus(0xf2c94c);
   scene.add(bus);
+  rig = createCameraRig(camera, bus);
 }
 
 function resize() {
@@ -42,16 +50,22 @@ function resize() {
 
 function loop() {
   if (!running) return;
-  requestAnimationFrame(loop);
-  angle += 0.005;
-  camera.position.set(Math.sin(angle) * 18, 6, Math.cos(angle) * 18);
-  camera.lookAt(0, 1.5, 0);
+  frameId = requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  controls.update(dt);
+  updateBus(bus, controls.input, dt);
+  rig.update(dt);
+  speedEl.textContent = Math.round(bus.userData.speed * 3.6) + " km/h";
   renderer.render(scene, camera);
 }
 
 function startGame() {
   initGame();
   resize();
+  resetBus(bus, 0, 400, 0);
+  controls.reset();
+  rig.snap();
+  clock.getDelta();
   if (!running) {
     running = true;
     loop();
@@ -60,6 +74,8 @@ function startGame() {
 
 function stopGame() {
   running = false;
+  cancelAnimationFrame(frameId);
+  controls.reset();
 }
 
 async function enterLandscape() {
@@ -97,6 +113,17 @@ document.querySelectorAll("[data-mode]").forEach((btn) => {
     enterLandscape();
     showScreen("game");
   });
+});
+
+cameraButton.addEventListener("click", () => {
+  if (rig) rig.toggle();
+  cameraButton.blur();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (running && rig && e.code === "KeyC") {
+    rig.toggle();
+  }
 });
 
 window.addEventListener("resize", resize);
