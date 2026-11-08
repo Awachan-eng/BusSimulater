@@ -1,1 +1,43 @@
-
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バスシミュレーター</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="screen-title" class="screen">
+<h1>バスシミュレーター</h1>
+<div class="menu">
+<button data-mode="career">キャリアモード</button>
+<button data-mode="daily">デイリーモード</button>
+<button data-mode="free">フリーモード</button>
+<button data-screen="shop">ショップ</button>
+<button data-screen="settings">設定</button>
+</div>
+</div>
+<div id="screen-shop" class="screen">
+<h2>ショップ</h2>
+<p>準備中です</p>
+<div class="menu">
+<button data-screen="title">もどる</button>
+</div>
+</div>
+<div id="screen-settings" class="screen">
+<h2>設定</h2>
+<p>準備中です</p>
+<div class="menu">
+<button data-screen="title">もどる</button>
+</div>
+</div>
+<div id="screen-game" class="screen">
+<h2 id="game-mode-name"></h2>
+<p>準備中です</p>
+<div class="menu">
+<button data-screen="title">タイトルへもどる</button>
+</div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
