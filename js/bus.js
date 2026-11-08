@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { STEER } from "./data.js";
 
 function createExterior(color) {
   const exterior = new THREE.Group();
@@ -117,6 +118,7 @@ export function createBus(color) {
   bus.add(cockpit);
 
   bus.userData.speed = 0;
+  bus.userData.wheelValue = 0;
   bus.userData.exterior = exterior;
   bus.userData.cockpit = cockpit;
   bus.userData.wheel = cockpit.userData.wheel;
@@ -128,6 +130,7 @@ export function resetBus(bus, x, z, heading) {
   bus.position.set(x, 0, z);
   bus.rotation.y = heading;
   bus.userData.speed = 0;
+  bus.userData.wheelValue = 0;
   bus.userData.wheel.rotation.z = 0;
 }
 
@@ -137,6 +140,7 @@ export function updateBus(bus, input, dt) {
   const brakePower = 12;
   const drag = 1.5;
   const limit = 450;
+  const wheelMax = (STEER.maxDegrees * Math.PI) / 180;
 
   let speed = bus.userData.speed;
 
@@ -163,5 +167,8 @@ export function updateBus(bus, input, dt) {
   bus.position.z = Math.max(-limit, Math.min(limit, bus.position.z));
 
   bus.userData.speed = speed;
-  bus.userData.wheel.rotation.z = -input.steer * 1.6;
+
+  const follow = 1 - Math.exp(-14 * dt);
+  bus.userData.wheelValue += (input.steer - bus.userData.wheelValue) * follow;
+  bus.userData.wheel.rotation.z = -bus.userData.wheelValue * wheelMax;
 }
