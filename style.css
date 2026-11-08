@@ -74,6 +74,9 @@ button.small {
   padding: 0;
   gap: 0;
   position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #screen-game.active {
@@ -101,11 +104,59 @@ button.small {
   pointer-events: auto;
 }
 
-#game-mode-name {
+#game-mode-name,
+#speed-display {
   font-size: 16px;
   padding: 6px 12px;
   background: rgba(0, 0, 0, 0.5);
   border-radius: 8px;
+}
+
+#speed-display {
+  margin-left: auto;
+  min-width: 96px;
+  text-align: right;
+}
+
+#drive-controls {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.pad {
+  display: flex;
+  gap: 16px;
+}
+
+.drive-btn {
+  width: 96px;
+  height: 84px;
+  padding: 0;
+  font-size: 18px;
+  opacity: 0.8;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.drive-btn.accel {
+  background: #27ae60;
+}
+
+.drive-btn.brake {
+  background: #eb5757;
+}
+
+.drive-btn:active {
+  opacity: 1;
 }
 
 #rotate-notice {
