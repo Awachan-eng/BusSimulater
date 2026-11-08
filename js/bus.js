@@ -39,5 +39,47 @@ export function createBus(color) {
     });
   });
 
+  bus.userData.speed = 0;
+
   return bus;
+}
+
+export function resetBus(bus, x, z, heading) {
+  bus.position.set(x, 0, z);
+  bus.rotation.y = heading;
+  bus.userData.speed = 0;
+}
+
+export function updateBus(bus, input, dt) {
+  const maxSpeed = 22;
+  const accel = 5;
+  const brakePower = 12;
+  const drag = 1.5;
+  const limit = 450;
+
+  let speed = bus.userData.speed;
+
+  if (input.throttle > 0) {
+    speed += accel * input.throttle * dt;
+  }
+  if (input.brake > 0) {
+    speed -= brakePower * input.brake * dt;
+  }
+  if (input.throttle === 0 && input.brake === 0) {
+    speed -= drag * dt;
+  }
+
+  speed = Math.max(0, Math.min(maxSpeed, speed));
+
+  const turnFactor = Math.min(1, speed / 5);
+  const turnRate = 0.8 * (1 - 0.5 * (speed / maxSpeed));
+  bus.rotation.y -= input.steer * turnRate * turnFactor * dt;
+
+  const heading = bus.rotation.y;
+  bus.position.x += -Math.sin(heading) * speed * dt;
+  bus.position.z += -Math.cos(heading) * speed * dt;
+  bus.position.x = Math.max(-limit, Math.min(limit, bus.position.x));
+  bus.position.z = Math.max(-limit, Math.min(limit, bus.position.z));
+
+  bus.userData.speed = speed;
 }
