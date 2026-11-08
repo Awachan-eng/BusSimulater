@@ -70,6 +70,27 @@ button.small {
   font-size: 14px;
 }
 
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 18px;
+}
+
+.segment {
+  display: flex;
+  gap: 8px;
+}
+
+.segment button {
+  background: #3b4a63;
+}
+
+.segment button.selected {
+  background: #2f80ed;
+}
+
 #screen-game {
   padding: 0;
   gap: 0;
@@ -132,6 +153,7 @@ button.small {
 .pad {
   display: flex;
   gap: 16px;
+  align-items: flex-end;
 }
 
 .drive-btn {
@@ -157,6 +179,60 @@ button.small {
 
 .drive-btn:active {
   opacity: 1;
+}
+
+#screen-game.mode-wheel #steer-buttons {
+  display: none;
+}
+
+#screen-game.mode-button #steer-wheel {
+  display: none;
+}
+
+#steer-wheel {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 16px solid rgba(20, 20, 20, 0.85);
+  background: rgba(60, 60, 60, 0.35);
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#steer-wheel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 12px;
+  margin-top: -6px;
+  background: rgba(20, 20, 20, 0.85);
+}
+
+#steer-wheel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  bottom: 0;
+  width: 12px;
+  margin-left: -6px;
+  background: rgba(20, 20, 20, 0.85);
+}
+
+#steer-marker {
+  position: absolute;
+  left: 50%;
+  top: -16px;
+  width: 12px;
+  height: 16px;
+  margin-left: -6px;
+  background: #ff4444;
 }
 
 #rotate-notice {
