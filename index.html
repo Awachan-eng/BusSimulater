@@ -36,7 +36,13 @@
 </div>
 <div id="screen-settings" class="screen">
 <h2>設定</h2>
-<p>準備中です</p>
+<div class="setting-row">
+<span>操作方式</span>
+<div class="segment">
+<button data-control="button">ボタン操作</button>
+<button data-control="wheel">ハンドル操作</button>
+</div>
+</div>
 <div class="menu single">
 <button data-screen="title">もどる</button>
 </div>
@@ -48,11 +54,15 @@
 <span id="game-mode-name"></span>
 <span id="speed-display">0 km/h</span>
 <button class="small" id="btn-camera">視点切替</button>
+<button class="small" id="btn-control">操作切替</button>
 </div>
 <div id="drive-controls">
 <div class="pad">
+<div class="pad" id="steer-buttons">
 <button class="drive-btn" id="btn-left">◀</button>
 <button class="drive-btn" id="btn-right">▶</button>
+</div>
+<div id="steer-wheel"><span id="steer-marker"></span></div>
 </div>
 <div class="pad">
 <button class="drive-btn brake" id="btn-brake">ブレーキ</button>
