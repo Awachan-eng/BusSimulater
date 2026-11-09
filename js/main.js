@@ -3,8 +3,7 @@ import { createWorld } from "./world.js";
 import { createBus, resetBus, updateBus } from "./bus.js";
 import { createCameraRig } from "./cameras.js";
 import { createControls } from "./controls.js";
-import { createRules } from "./rules.js";
-import { createStops } from "./stops.js";
+import { createRules, createStops } from "./rules.js";
 import { getSetting, setSetting, getCoins, addCoins } from "./save.js";
 
 const modeNames = {
