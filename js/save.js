@@ -1,7 +1,8 @@
 const KEY = "bus-simulator-save";
 
 const defaults = {
-  controlMode: "button"
+  controlMode: "button",
+  coins: 0
 };
 
 let data = Object.assign({}, defaults);
@@ -29,4 +30,14 @@ export function getSetting(name) {
 export function setSetting(name, value) {
   data[name] = value;
   persist();
+}
+
+export function getCoins() {
+  return Math.max(0, Math.floor(Number(data.coins) || 0));
+}
+
+export function addCoins(amount) {
+  data.coins = Math.max(0, getCoins() + Math.round(amount));
+  persist();
+  return data.coins;
 }
