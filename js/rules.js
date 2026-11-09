@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CITY, signalState, STOPS, STOP } from "./data.js";
+import { CITY, signalState, STOPS, STOP, START, routeMultiplier } from "./data.js";
 
 const HALF = CITY.roadWidth / 2;
 const OUTER = 24;
@@ -11,6 +11,52 @@ function normalizeAngle(angle) {
   while (a > Math.PI) a -= Math.PI * 2;
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
+}
+
+function seeded(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function placement(def) {
+  if (def.dir === "n") return { x: def.road - 3, z: def.at, heading: 0 };
+  if (def.dir === "s") return { x: def.road + 3, z: def.at, heading: Math.PI };
+  if (def.dir === "e") return { x: def.at, z: def.road - 3, heading: -Math.PI / 2 };
+  return { x: def.at, z: def.road + 3, heading: Math.PI / 2 };
+}
+
+export function courseInfo(indices) {
+  let length = 0;
+  let px = START.x;
+  let pz = START.z;
+  indices.forEach((i) => {
+    const p = placement(STOPS[i]);
+    length += Math.abs(p.x - px) + Math.abs(p.z - pz);
+    px = p.x;
+    pz = p.z;
+  });
+  const rounded = Math.round(length);
+  return { length: rounded, multiplier: routeMultiplier(rounded) };
+}
+
+export function makeDailyStops(date) {
+  const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+  const random = seeded(seed);
+  const count = 3 + Math.floor(random() * 4);
+  const indices = STOPS.map((def, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    const t = indices[i];
+    indices[i] = indices[j];
+    indices[j] = t;
+  }
+  return indices.slice(0, count);
 }
 
 export function createRules(world, bus, controls, onEvent) {
@@ -119,13 +165,6 @@ export function createRules(world, bus, controls, onEvent) {
   return { update: update, reset: reset, getRunCoins: getRunCoins };
 }
 
-function placement(def) {
-  if (def.dir === "n") return { x: def.road - 3, z: def.at, heading: 0 };
-  if (def.dir === "s") return { x: def.road + 3, z: def.at, heading: Math.PI };
-  if (def.dir === "e") return { x: def.at, z: def.road - 3, heading: -Math.PI / 2 };
-  return { x: def.at, z: def.road + 3, heading: Math.PI / 2 };
-}
-
 function makeSignTexture(name) {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
@@ -144,19 +183,48 @@ function makeSignTexture(name) {
   return texture;
 }
 
+function makeZoneTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 448;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "rgba(255, 213, 79, 0.4)";
+  ctx.fillRect(0, 0, 128, 448);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.lineWidth = 14;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  [70, 190, 310].forEach((y) => {
+    ctx.beginPath();
+    ctx.moveTo(24, y + 44);
+    ctx.lineTo(64, y);
+    ctx.lineTo(104, y + 44);
+    ctx.stroke();
+  });
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 function randomCount() {
   return 1 + Math.floor(Math.random() * STOP.maxWaiting);
 }
 
-export function createStops(scene, bus, onEvent) {
+export function createStops(scene, bus, onEvent, onRouteFinish) {
   let runCoins = 0;
+  let routeMode = false;
+  let route = [];
+  let routeIndex = 0;
+  let finished = false;
+  let advancing = false;
+  let advanceTimer = 0;
+
   bus.userData.passengers = 0;
 
   const zoneGeometry = new THREE.PlaneGeometry(4, 14);
   const zoneMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffd54f,
+    map: makeZoneTexture(),
     transparent: true,
-    opacity: 0.35,
     depthWrite: false
   });
   const beaconGeometry = new THREE.CylinderGeometry(0.5, 0.5, 16, 12, 1, true);
@@ -295,11 +363,35 @@ export function createStops(scene, bus, onEvent) {
   }
 
   function update(dt) {
+    if (advancing) {
+      advanceTimer -= dt;
+      if (advanceTimer <= 0) {
+        advancing = false;
+        routeIndex += 1;
+        if (routeIndex >= route.length) {
+          routeIndex = route.length - 1;
+          finished = true;
+          onRouteFinish();
+        } else {
+          setWaiting(stops[route[routeIndex]], randomCount());
+          onEvent({
+            amount: 0,
+            text: "次は「" + STOPS[route[routeIndex]].name + "」へ",
+            total: runCoins
+          });
+        }
+      }
+    }
+
+    if (finished) return;
+
     stops.forEach((stop) => {
       if (!stop.active) {
-        stop.cooldown -= dt;
-        if (stop.cooldown <= 0) {
-          setWaiting(stop, randomCount());
+        if (!routeMode) {
+          stop.cooldown -= dt;
+          if (stop.cooldown <= 0) {
+            setWaiting(stop, randomCount());
+          }
         }
         return;
       }
@@ -345,16 +437,51 @@ export function createStops(scene, bus, onEvent) {
 
       if (stop.count === 0) {
         setCooldown(stop);
+        if (routeMode) {
+          advancing = true;
+          advanceTimer = 1.5;
+        }
       }
     });
   }
 
   function reset() {
     runCoins = 0;
+    routeIndex = 0;
+    finished = false;
+    advancing = false;
+    advanceTimer = 0;
     bus.userData.passengers = 0;
-    stops.forEach((stop) => {
-      setWaiting(stop, randomCount());
-    });
+
+    if (routeMode && route.length > 0) {
+      stops.forEach((stop) => {
+        setCooldown(stop);
+      });
+      setWaiting(stops[route[0]], randomCount());
+    } else {
+      stops.forEach((stop) => {
+        setWaiting(stop, randomCount());
+      });
+    }
+  }
+
+  function setRoute(list) {
+    routeMode = Array.isArray(list);
+    route = routeMode ? list.slice() : [];
+    reset();
+  }
+
+  function getRouteInfo() {
+    if (!routeMode || route.length === 0) return null;
+    const target = stops[route[routeIndex]];
+    return {
+      index: routeIndex,
+      total: route.length,
+      name: STOPS[route[routeIndex]].name,
+      x: target.x,
+      z: target.z,
+      finished: finished
+    };
   }
 
   function getRunCoins() {
@@ -363,5 +490,11 @@ export function createStops(scene, bus, onEvent) {
 
   reset();
 
-  return { update: update, reset: reset, getRunCoins: getRunCoins };
-    }
+  return {
+    update: update,
+    reset: reset,
+    setRoute: setRoute,
+    getRouteInfo: getRouteInfo,
+    getRunCoins: getRunCoins
+  };
+}
