@@ -118,6 +118,7 @@ export function createBus(color) {
   bus.add(cockpit);
 
   bus.userData.speed = 0;
+  bus.userData.pedal = 0;
   bus.userData.wheelValue = 0;
   bus.userData.exterior = exterior;
   bus.userData.cockpit = cockpit;
@@ -130,22 +131,30 @@ export function resetBus(bus, x, z, heading) {
   bus.position.set(x, 0, z);
   bus.rotation.y = heading;
   bus.userData.speed = 0;
+  bus.userData.pedal = 0;
   bus.userData.wheelValue = 0;
   bus.userData.wheel.rotation.z = 0;
 }
 
 export function updateBus(bus, input, dt) {
-  const maxSpeed = 22;
-  const accel = 5;
+  const maxSpeed = DRIVE.maxSpeed;
   const brakePower = 12;
   const drag = 1.5;
   const limit = 450;
   const wheelMax = (STEER.maxDegrees * Math.PI) / 180;
 
   let speed = bus.userData.speed;
+  let pedal = bus.userData.pedal;
 
-  if (input.throttle > 0) {
-    speed += accel * input.throttle * dt;
+  const pedalRate = (input.throttle > pedal ? DRIVE.pedalRise : DRIVE.pedalFall) * dt;
+  if (pedal < input.throttle) {
+    pedal = Math.min(input.throttle, pedal + pedalRate);
+  } else if (pedal > input.throttle) {
+    pedal = Math.max(input.throttle, pedal - pedalRate);
+  }
+
+  if (pedal > 0) {
+    speed += DRIVE.accel * pedal * (1 - speed / maxSpeed) * dt;
   }
   if (input.brake > 0) {
     speed -= brakePower * input.brake * dt;
@@ -167,6 +176,7 @@ export function updateBus(bus, input, dt) {
   bus.position.z = Math.max(-limit, Math.min(limit, bus.position.z));
 
   bus.userData.speed = speed;
+  bus.userData.pedal = pedal;
 
   const follow = 1 - Math.exp(-14 * dt);
   bus.userData.wheelValue += (input.steer - bus.userData.wheelValue) * follow;
