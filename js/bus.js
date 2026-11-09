@@ -138,7 +138,7 @@ export function resetBus(bus, x, z, heading) {
 
 export function updateBus(bus, input, dt) {
   const maxSpeed = DRIVE.maxSpeed;
-  const brakePower = 12;
+  const brakePower = DRIVE.brake;
   const drag = 1.5;
   const limit = 450;
   const wheelMax = (STEER.maxDegrees * Math.PI) / 180;
