@@ -19,6 +19,7 @@
 </div>
 <div id="screen-title" class="screen">
 <h1>バスシミュレーター</h1>
+<p id="title-coins" class="coins">所持コイン：0</p>
 <div class="menu">
 <button data-mode="career">キャリアモード</button>
 <button data-mode="daily">デイリーモード</button>
@@ -50,12 +51,22 @@
 <div id="screen-game" class="screen">
 <canvas id="game-canvas"></canvas>
 <div id="game-hud">
+<div class="hud-group">
 <button class="small" data-screen="title">もどる</button>
-<span id="game-mode-name"></span>
-<span id="speed-display">0 km/h</span>
+<span class="hud-pill" id="game-mode-name"></span>
+</div>
+<div class="hud-group">
+<span class="blinker-ind" id="blinker-left">◀</span>
+<span class="hud-pill" id="speed-display">0 km/h</span>
+<span class="hud-pill" id="run-coins">コイン 0</span>
+<span class="blinker-ind" id="blinker-right">▶</span>
+</div>
+<div class="hud-group">
 <button class="small" id="btn-camera">視点切替</button>
 <button class="small" id="btn-control">操作切替</button>
 </div>
+</div>
+<div id="toast"></div>
 <div id="drive-controls">
 <div class="pad">
 <div class="pad" id="steer-buttons">
@@ -63,6 +74,10 @@
 <button class="drive-btn" id="btn-right">▶</button>
 </div>
 <div id="steer-wheel"><span id="steer-marker"></span></div>
+</div>
+<div class="pad" id="blinker-pad">
+<button class="drive-btn blinker" id="btn-blink-left">◀左</button>
+<button class="drive-btn blinker" id="btn-blink-right">右▶</button>
 </div>
 <div class="pad">
 <button class="drive-btn brake" id="btn-brake">ブレーキ</button>
