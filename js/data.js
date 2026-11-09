@@ -6,9 +6,10 @@ export const DRIVE = {
   turnRate: 1.2,
   highSpeedLoss: 0.4,
   maxSpeed: 22,
-  accel: 2.6,
-  pedalRise: 1.6,
-  pedalFall: 5
+  accel: 3.6,
+  pedalRise: 2.2,
+  pedalFall: 5,
+  brake: 10
 };
 
 export const CITY = {
