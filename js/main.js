@@ -4,6 +4,7 @@ import { createBus, resetBus, updateBus } from "./bus.js";
 import { createCameraRig } from "./cameras.js";
 import { createControls } from "./controls.js";
 import { createRules } from "./rules.js";
+import { createStops } from "./stops.js";
 import { getSetting, setSetting, getCoins, addCoins } from "./save.js";
 
 const modeNames = {
@@ -15,6 +16,7 @@ const modeNames = {
 const canvas = document.getElementById("game-canvas");
 const speedEl = document.getElementById("speed-display");
 const runCoinsEl = document.getElementById("run-coins");
+const passengerEl = document.getElementById("passenger-count");
 const titleCoinsEl = document.getElementById("title-coins");
 const toastEl = document.getElementById("toast");
 const blinkLeftEl = document.getElementById("blinker-left");
@@ -33,10 +35,15 @@ let world = null;
 let bus = null;
 let rig = null;
 let rules = null;
+let stops = null;
 let running = false;
 let frameId = 0;
 let gameTime = 0;
 let toastTimer = 0;
+
+function totalRunCoins() {
+  return rules.getRunCoins() + stops.getRunCoins();
+}
 
 function updateTitleCoins() {
   titleCoinsEl.textContent = "所持コイン：" + getCoins();
@@ -52,7 +59,7 @@ function showToast(text, kind) {
 }
 
 function handleEvent(event) {
-  runCoinsEl.textContent = "コイン " + event.total;
+  runCoinsEl.textContent = "コイン " + totalRunCoins();
   if (event.amount === 0) {
     showToast(event.text, "neutral");
   } else if (event.amount > 0) {
@@ -91,6 +98,7 @@ function initGame() {
   scene.add(bus);
   rig = createCameraRig(camera, bus);
   rules = createRules(world, bus, controls, handleEvent);
+  stops = createStops(scene, bus, handleEvent);
 }
 
 function resize() {
@@ -112,8 +120,10 @@ function loop() {
   updateBus(bus, controls.input, dt);
   world.update(gameTime);
   rules.update(gameTime);
+  stops.update(dt);
   rig.update(dt);
   speedEl.textContent = Math.round(bus.userData.speed * 3.6) + " km/h";
+  passengerEl.textContent = "乗客 " + bus.userData.passengers;
   updateBlinkerDisplay();
   renderer.render(scene, camera);
 }
@@ -125,7 +135,9 @@ function startGame() {
   resetBus(bus, -3, 180, 0);
   controls.reset();
   rules.reset();
+  stops.reset();
   runCoinsEl.textContent = "コイン 0";
+  passengerEl.textContent = "乗客 0";
   toastEl.classList.remove("show");
   rig.snap();
   clock.getDelta();
@@ -143,8 +155,9 @@ function stopGame() {
 }
 
 function settleRun() {
-  addCoins(rules.getRunCoins());
+  addCoins(totalRunCoins());
   rules.reset();
+  stops.reset();
   updateTitleCoins();
 }
 
