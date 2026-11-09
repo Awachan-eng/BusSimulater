@@ -44,6 +44,28 @@ export const STOPS = [
   { name: "港前", dir: "e", road: 240, at: 180 }
 ];
 
+export const START = {
+  x: -3,
+  z: 180,
+  heading: 0
+};
+
+export const MULTIPLIER = {
+  perMeter: 1 / 600,
+  max: 4
+};
+
+export const COURSES = [
+  { name: "短距離コース", stops: [0, 1, 2] },
+  { name: "中距離コース", stops: [0, 1, 2, 3, 4] },
+  { name: "長距離コース", stops: [0, 4, 5, 6, 3, 1, 2, 7] }
+];
+
+export function routeMultiplier(length) {
+  const value = 1 + length * MULTIPLIER.perMeter;
+  return Math.min(MULTIPLIER.max, Math.round(value * 10) / 10);
+}
+
 export function signalState(time, offset, axis) {
   const period = SIGNAL.period;
   const t = (((time + offset) % period) + period) % period;
