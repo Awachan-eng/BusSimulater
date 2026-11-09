@@ -38,6 +38,11 @@ h2 {
   font-size: 24px;
 }
 
+.coins {
+  font-size: 18px;
+  color: #f2c94c;
+}
+
 .menu {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -66,7 +71,7 @@ button:active {
 }
 
 button.small {
-  padding: 8px 16px;
+  padding: 8px 14px;
   font-size: 14px;
 }
 
@@ -116,27 +121,84 @@ button.small {
   left: 12px;
   right: 12px;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
   pointer-events: none;
+}
+
+.hud-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 #game-hud button {
   pointer-events: auto;
 }
 
-#game-mode-name,
-#speed-display {
-  font-size: 16px;
-  padding: 6px 12px;
+.hud-pill {
+  font-size: 14px;
+  padding: 6px 10px;
   background: rgba(0, 0, 0, 0.5);
   border-radius: 8px;
+  white-space: nowrap;
 }
 
 #speed-display {
-  margin-left: auto;
-  min-width: 96px;
+  min-width: 80px;
   text-align: right;
+}
+
+.blinker-ind {
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.25);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.blinker-ind.on {
+  color: #ffa21f;
+  animation: blink 0.8s steps(1) infinite;
+}
+
+@keyframes blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+#toast {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: bold;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+#toast.show {
+  opacity: 1;
+}
+
+#toast.plus {
+  background: rgba(39, 174, 96, 0.92);
+}
+
+#toast.minus {
+  background: rgba(235, 87, 87, 0.92);
+}
+
+#toast.neutral {
+  background: rgba(0, 0, 0, 0.65);
 }
 
 #drive-controls {
@@ -154,6 +216,10 @@ button.small {
   display: flex;
   gap: 16px;
   align-items: flex-end;
+}
+
+#blinker-pad {
+  gap: 8px;
 }
 
 .drive-btn {
@@ -175,6 +241,17 @@ button.small {
 
 .drive-btn.brake {
   background: #eb5757;
+}
+
+.drive-btn.blinker {
+  width: 72px;
+  height: 56px;
+  background: #7a5a1a;
+}
+
+.drive-btn.blinker.on {
+  background: #f2994a;
+  opacity: 1;
 }
 
 .drive-btn:active {
