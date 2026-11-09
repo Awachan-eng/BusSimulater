@@ -56,6 +56,11 @@ h2 {
   max-width: 280px;
 }
 
+.menu.two {
+  grid-template-columns: 1fr 1fr;
+  max-width: 420px;
+}
+
 button {
   padding: 14px;
   font-size: 17px;
@@ -73,6 +78,47 @@ button:active {
 button.small {
   padding: 8px 14px;
   font-size: 14px;
+}
+
+.course-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 720px;
+}
+
+.course-btn {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.course-btn strong {
+  font-size: 17px;
+}
+
+.result-box {
+  width: 100%;
+  max-width: 360px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 12px;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 17px;
+}
+
+.result-row.total {
+  font-size: 22px;
+  font-weight: bold;
+  color: #f2c94c;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  margin: 4px 0;
 }
 
 .setting-row {
@@ -150,6 +196,10 @@ button.small {
   background: rgba(0, 0, 0, 0.5);
   border-radius: 8px;
   white-space: nowrap;
+}
+
+#route-info:empty {
+  display: none;
 }
 
 #speed-display {
