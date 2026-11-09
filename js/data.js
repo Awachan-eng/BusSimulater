@@ -2,6 +2,11 @@ export const STEER = {
   maxDegrees: 360
 };
 
+export const DRIVE = {
+  turnRate: 1.2,
+  highSpeedLoss: 0.4
+};
+
 export const CITY = {
   spacing: 120,
   range: 2,
