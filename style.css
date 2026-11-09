@@ -121,6 +121,7 @@ button.small {
   left: 12px;
   right: 12px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
@@ -131,6 +132,12 @@ button.small {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.hud-group.center {
+  order: 3;
+  width: 100%;
+  justify-content: center;
 }
 
 #game-hud button {
@@ -172,7 +179,7 @@ button.small {
 
 #toast {
   position: absolute;
-  top: 64px;
+  top: 100px;
   left: 50%;
   transform: translateX(-50%);
   padding: 8px 18px;
