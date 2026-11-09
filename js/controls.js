@@ -3,7 +3,7 @@ import { STEER } from "./data.js";
 export function createControls() {
   const touch = { left: false, right: false, accel: false, brake: false };
   const key = { left: false, right: false, accel: false, brake: false };
-  const input = { throttle: 0, brake: 0, steer: 0 };
+  const input = { throttle: 0, brake: 0, steer: 0, blinker: null };
 
   const keyMap = {
     ArrowLeft: "left",
@@ -46,10 +46,27 @@ export function createControls() {
     });
   }
 
+  function toggleBlinker(side) {
+    input.blinker = input.blinker === side ? null : side;
+  }
+
+  function bindBlinker(id, side) {
+    const el = document.getElementById(id);
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      toggleBlinker(side);
+    });
+    el.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
+  }
+
   bindButton("btn-left", "left");
   bindButton("btn-right", "right");
   bindButton("btn-accel", "accel");
   bindButton("btn-brake", "brake");
+  bindBlinker("btn-blink-left", "left");
+  bindBlinker("btn-blink-right", "right");
 
   function pointerAngle(e) {
     return Math.atan2(e.clientY - centerY, e.clientX - centerX);
@@ -89,6 +106,14 @@ export function createControls() {
   });
 
   window.addEventListener("keydown", (e) => {
+    if (e.code === "KeyQ" && !e.repeat) {
+      toggleBlinker("left");
+      return;
+    }
+    if (e.code === "KeyE" && !e.repeat) {
+      toggleBlinker("right");
+      return;
+    }
     const name = keyMap[e.code];
     if (name) {
       key[name] = true;
@@ -141,7 +166,12 @@ export function createControls() {
     input.throttle = 0;
     input.brake = 0;
     input.steer = 0;
+    input.blinker = null;
     showWheel();
+  }
+
+  function clearBlinker() {
+    input.blinker = null;
   }
 
   function setMode(next) {
@@ -155,5 +185,12 @@ export function createControls() {
     return mode;
   }
 
-  return { input: input, update: update, reset: reset, setMode: setMode, getMode: getMode };
+  return {
+    input: input,
+    update: update,
+    reset: reset,
+    clearBlinker: clearBlinker,
+    setMode: setMode,
+    getMode: getMode
+  };
 }
