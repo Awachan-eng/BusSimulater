@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { STEER } from "./data.js";
+import { STEER, DRIVE } from "./data.js";
 
 function createExterior(color) {
   const exterior = new THREE.Group();
@@ -156,8 +156,8 @@ export function updateBus(bus, input, dt) {
 
   speed = Math.max(0, Math.min(maxSpeed, speed));
 
-  const turnFactor = Math.min(1, speed / 5);
-  const turnRate = 0.8 * (1 - 0.5 * (speed / maxSpeed));
+  const turnFactor = Math.min(1, speed / 3);
+  const turnRate = DRIVE.turnRate * (1 - DRIVE.highSpeedLoss * (speed / maxSpeed));
   bus.rotation.y -= input.steer * turnRate * turnFactor * dt;
 
   const heading = bus.rotation.y;
