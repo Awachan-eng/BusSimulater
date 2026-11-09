@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>バスシミュレーター</title>
 <link rel="stylesheet" href="style.css">
+<script>
+window.addEventListener("error", function (e) {
+  var text = e.message;
+  if (e.target && e.target.src) {
+    text = "読み込み失敗: " + e.target.src + "（このファイル、またはこれが読み込む別のファイルが見つからないか、壊れています）";
+  }
+  var box = document.createElement("pre");
+  box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:999;margin:0;padding:8px;background:#7a1f1f;color:#fff;font-size:12px;white-space:pre-wrap";
+  box.textContent = text;
+  document.body.appendChild(box);
+}, true);
+</script>
 <script type="importmap">
 {
   "imports": {
@@ -26,6 +38,27 @@
 <button data-mode="free">フリーモード</button>
 <button data-screen="shop">ショップ</button>
 <button data-screen="settings">設定</button>
+</div>
+</div>
+<div id="screen-courses" class="screen">
+<h2>コース選択</h2>
+<div class="course-list" id="course-list"></div>
+<div class="menu single">
+<button data-screen="title">もどる</button>
+</div>
+</div>
+<div id="screen-result" class="screen">
+<h2 id="result-title">ルート完了！</h2>
+<div class="result-box">
+<div class="result-row"><span>基本のコイン</span><span id="result-base">0</span></div>
+<div class="result-row"><span>ルートの長さ</span><span id="result-length">0 m</span></div>
+<div class="result-row"><span>倍率</span><span id="result-mult">×1.0</span></div>
+<div class="result-row total"><span>合計</span><span id="result-total">0</span></div>
+<div class="result-row"><span>所持コイン</span><span id="result-coins">0</span></div>
+</div>
+<div class="menu two">
+<button id="btn-retry">もう一度</button>
+<button data-screen="title">タイトルへ</button>
 </div>
 </div>
 <div id="screen-shop" class="screen">
@@ -64,6 +97,7 @@
 <span class="hud-pill" id="speed-display">0 km/h</span>
 <span class="hud-pill" id="run-coins">コイン 0</span>
 <span class="hud-pill" id="passenger-count">乗客 0</span>
+<span class="hud-pill" id="route-info"></span>
 <span class="blinker-ind" id="blinker-right">▶</span>
 </div>
 </div>
