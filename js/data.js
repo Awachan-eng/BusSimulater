@@ -4,7 +4,11 @@ export const STEER = {
 
 export const DRIVE = {
   turnRate: 1.2,
-  highSpeedLoss: 0.4
+  highSpeedLoss: 0.4,
+  maxSpeed: 22,
+  accel: 2.6,
+  pedalRise: 1.6,
+  pedalFall: 5
 };
 
 export const CITY = {
