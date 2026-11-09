@@ -3,7 +3,8 @@ import { createWorld } from "./world.js";
 import { createBus, resetBus, updateBus } from "./bus.js";
 import { createCameraRig } from "./cameras.js";
 import { createControls } from "./controls.js";
-import { getSetting, setSetting } from "./save.js";
+import { createRules } from "./rules.js";
+import { getSetting, setSetting, getCoins, addCoins } from "./save.js";
 
 const modeNames = {
   career: "キャリアモード",
@@ -13,6 +14,13 @@ const modeNames = {
 
 const canvas = document.getElementById("game-canvas");
 const speedEl = document.getElementById("speed-display");
+const runCoinsEl = document.getElementById("run-coins");
+const titleCoinsEl = document.getElementById("title-coins");
+const toastEl = document.getElementById("toast");
+const blinkLeftEl = document.getElementById("blinker-left");
+const blinkRightEl = document.getElementById("blinker-right");
+const blinkLeftButton = document.getElementById("btn-blink-left");
+const blinkRightButton = document.getElementById("btn-blink-right");
 const cameraButton = document.getElementById("btn-camera");
 const controlButton = document.getElementById("btn-control");
 const controls = createControls();
@@ -24,9 +32,35 @@ let camera = null;
 let world = null;
 let bus = null;
 let rig = null;
+let rules = null;
 let running = false;
 let frameId = 0;
 let gameTime = 0;
+let toastTimer = 0;
+
+function updateTitleCoins() {
+  titleCoinsEl.textContent = "所持コイン：" + getCoins();
+}
+
+function showToast(text, kind) {
+  toastEl.textContent = text;
+  toastEl.className = "show " + kind;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toastEl.classList.remove("show");
+  }, 1800);
+}
+
+function handleEvent(event) {
+  runCoinsEl.textContent = "コイン " + event.total;
+  if (event.amount === 0) {
+    showToast(event.text, "neutral");
+  } else if (event.amount > 0) {
+    showToast("+" + event.amount + " " + event.text, "plus");
+  } else {
+    showToast(event.amount + " " + event.text, "minus");
+  }
+}
 
 function applyControlMode(mode) {
   controls.setMode(mode);
@@ -34,6 +68,14 @@ function applyControlMode(mode) {
   document.querySelectorAll("[data-control]").forEach((btn) => {
     btn.classList.toggle("selected", btn.dataset.control === controls.getMode());
   });
+}
+
+function updateBlinkerDisplay() {
+  const side = controls.input.blinker;
+  blinkLeftEl.classList.toggle("on", side === "left");
+  blinkRightEl.classList.toggle("on", side === "right");
+  blinkLeftButton.classList.toggle("on", side === "left");
+  blinkRightButton.classList.toggle("on", side === "right");
 }
 
 function initGame() {
@@ -48,6 +90,7 @@ function initGame() {
   bus = createBus(0xf2c94c);
   scene.add(bus);
   rig = createCameraRig(camera, bus);
+  rules = createRules(world, bus, controls, handleEvent);
 }
 
 function resize() {
@@ -68,8 +111,10 @@ function loop() {
   controls.update(dt);
   updateBus(bus, controls.input, dt);
   world.update(gameTime);
+  rules.update(gameTime);
   rig.update(dt);
   speedEl.textContent = Math.round(bus.userData.speed * 3.6) + " km/h";
+  updateBlinkerDisplay();
   renderer.render(scene, camera);
 }
 
@@ -79,6 +124,9 @@ function startGame() {
   gameTime = 0;
   resetBus(bus, -3, 180, 0);
   controls.reset();
+  rules.reset();
+  runCoinsEl.textContent = "コイン 0";
+  toastEl.classList.remove("show");
   rig.snap();
   clock.getDelta();
   if (!running) {
@@ -91,6 +139,13 @@ function stopGame() {
   running = false;
   cancelAnimationFrame(frameId);
   controls.reset();
+  updateBlinkerDisplay();
+}
+
+function settleRun() {
+  addCoins(rules.getRunCoins());
+  rules.reset();
+  updateTitleCoins();
 }
 
 async function enterLandscape() {
@@ -112,6 +167,9 @@ function showScreen(name) {
   if (name === "game") {
     startGame();
   } else {
+    if (running) {
+      settleRun();
+    }
     stopGame();
   }
 }
@@ -158,4 +216,5 @@ window.addEventListener("orientationchange", () => {
 });
 
 applyControlMode(getSetting("controlMode") === "wheel" ? "wheel" : "button");
+updateTitleCoins();
 showScreen("title");
