@@ -1,27 +1,45 @@
 import * as THREE from "three";
 import { STEER, DRIVE } from "./data.js";
 
-function createExterior(color) {
+function createExterior(spec) {
   const exterior = new THREE.Group();
+  const isTour = spec.type === "tour";
+  const isHybrid = spec.type === "hybrid";
+  const length = isTour ? 12 : 10;
+  const height = isTour ? 3.2 : 2.8;
+  const centerZ = isTour ? 1 : 0;
+  const bodyY = 0.6 + height / 2;
 
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(2.6, 2.8, 10),
-    new THREE.MeshLambertMaterial({ color: color })
-  );
-  body.position.y = 2.0;
+  const bodyMaterial = new THREE.MeshLambertMaterial({ color: spec.color });
+  const accentMaterial = new THREE.MeshLambertMaterial({ color: spec.accent });
+  const glassMaterial = new THREE.MeshLambertMaterial({ color: isTour ? 0x4a7fa8 : 0x1e3a5f });
+  const lightMaterial = new THREE.MeshLambertMaterial({ color: 0xfff176 });
+  const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x111111 });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.6, height, length), bodyMaterial);
+  body.position.set(0, bodyY, centerZ);
   exterior.add(body);
 
-  const glassMaterial = new THREE.MeshLambertMaterial({ color: 0x1e3a5f });
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.22, length - 0.1), accentMaterial);
+  stripe.position.set(0, 1.15, centerZ);
+  exterior.add(stripe);
 
-  const sideWindows = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.9, 8), glassMaterial);
-  sideWindows.position.set(0, 2.5, 0.2);
+  const windowHeight = isTour ? 1.3 : 0.9;
+  const windowY = isTour ? 2.95 : 2.5;
+  const windowLength = isTour ? 10 : 8;
+  const sideWindows = new THREE.Mesh(
+    new THREE.BoxGeometry(2.64, windowHeight, windowLength),
+    glassMaterial
+  );
+  sideWindows.position.set(0, windowY, centerZ + 0.2);
   exterior.add(sideWindows);
 
-  const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.3, 0.05), glassMaterial);
-  windshield.position.set(0, 2.4, -5.01);
+  const windshield = new THREE.Mesh(
+    new THREE.BoxGeometry(isTour ? 2.3 : 2.1, isTour ? 1.7 : 1.3, 0.05),
+    glassMaterial
+  );
+  windshield.position.set(0, isTour ? 2.85 : 2.4, -5.01);
   exterior.add(windshield);
-
-  const lightMaterial = new THREE.MeshLambertMaterial({ color: 0xfff176 });
 
   [-0.9, 0.9].forEach((x) => {
     const headlight = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.05), lightMaterial);
@@ -29,10 +47,16 @@ function createExterior(color) {
     exterior.add(headlight);
   });
 
-  const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  if (isHybrid) {
+    const pod = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 3.2), accentMaterial);
+    pod.position.set(0, 0.6 + height + 0.17, -0.5);
+    exterior.add(pod);
+  }
+
+  const wheelZs = isTour ? [-3, 3, 6] : [-3, 3];
 
   [-1.3, 1.3].forEach((x) => {
-    [-3, 3].forEach((z) => {
+    wheelZs.forEach((z) => {
       const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.4, 24), wheelMaterial);
       wheel.rotation.z = Math.PI / 2;
       wheel.position.set(x, 0.5, z);
@@ -107,11 +131,31 @@ function createCockpit() {
   return cockpit;
 }
 
-export function createBus(color) {
-  const bus = new THREE.Group();
+export function applyBusSpec(bus, spec) {
+  const old = bus.userData.exterior;
+  if (old) {
+    bus.remove(old);
+    old.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    });
+  }
 
-  const exterior = createExterior(color);
+  const exterior = createExterior(spec);
   bus.add(exterior);
+
+  bus.userData.exterior = exterior;
+  bus.userData.specId = spec.id;
+  bus.userData.stats = {
+    maxSpeed: spec.maxSpeed,
+    accel: spec.accel,
+    brake: spec.brake,
+    turn: spec.turn
+  };
+}
+
+export function createBus(spec) {
+  const bus = new THREE.Group();
 
   const cockpit = createCockpit();
   cockpit.visible = false;
@@ -120,9 +164,10 @@ export function createBus(color) {
   bus.userData.speed = 0;
   bus.userData.pedal = 0;
   bus.userData.wheelValue = 0;
-  bus.userData.exterior = exterior;
   bus.userData.cockpit = cockpit;
   bus.userData.wheel = cockpit.userData.wheel;
+
+  applyBusSpec(bus, spec);
 
   return bus;
 }
@@ -137,8 +182,11 @@ export function resetBus(bus, x, z, heading) {
 }
 
 export function updateBus(bus, input, dt) {
-  const maxSpeed = DRIVE.maxSpeed;
-  const brakePower = DRIVE.brake;
+  const stats = bus.userData.stats;
+  const maxSpeed = stats.maxSpeed;
+  const accel = DRIVE.accel * stats.accel;
+  const brakePower = DRIVE.brake * stats.brake;
+  const turnBase = DRIVE.turnRate * stats.turn;
   const drag = 1.5;
   const limit = 450;
   const wheelMax = (STEER.maxDegrees * Math.PI) / 180;
@@ -154,7 +202,7 @@ export function updateBus(bus, input, dt) {
   }
 
   if (pedal > 0) {
-    speed += DRIVE.accel * pedal * (1 - speed / maxSpeed) * dt;
+    speed += accel * pedal * (1 - speed / maxSpeed) * dt;
   }
   if (input.brake > 0) {
     speed -= brakePower * input.brake * dt;
@@ -166,7 +214,7 @@ export function updateBus(bus, input, dt) {
   speed = Math.max(0, Math.min(maxSpeed, speed));
 
   const turnFactor = Math.min(1, speed / 3);
-  const turnRate = DRIVE.turnRate * (1 - DRIVE.highSpeedLoss * (speed / maxSpeed));
+  const turnRate = turnBase * (1 - DRIVE.highSpeedLoss * (speed / maxSpeed));
   bus.rotation.y -= input.steer * turnRate * turnFactor * dt;
 
   const heading = bus.rotation.y;
