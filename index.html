@@ -62,11 +62,13 @@ window.addEventListener("error", function (e) {
 </div>
 </div>
 <div id="screen-shop" class="screen">
+<div class="shop-header">
+<button class="small" data-screen="title">もどる</button>
 <h2>ショップ</h2>
-<p>準備中です</p>
-<div class="menu single">
-<button data-screen="title">もどる</button>
+<span id="shop-coins" class="coins">所持コイン：0</span>
 </div>
+<p id="shop-message" class="shop-message"></p>
+<div class="shop-list" id="shop-list"></div>
 </div>
 <div id="screen-settings" class="screen">
 <h2>設定</h2>
