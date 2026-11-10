@@ -1,11 +1,21 @@
 import * as THREE from "three";
 import { createWorld } from "./world.js";
-import { createBus, resetBus, updateBus } from "./bus.js";
+import { createBus, applyBusSpec, resetBus, updateBus } from "./bus.js";
 import { createCameraRig } from "./cameras.js";
 import { createControls } from "./controls.js";
 import { createRules, createStops, courseInfo, makeDailyStops } from "./rules.js";
-import { getSetting, setSetting, getCoins, addCoins } from "./save.js";
-import { START, COURSES } from "./data.js";
+import {
+  getSetting,
+  setSetting,
+  getCoins,
+  addCoins,
+  spendCoins,
+  getOwnedBuses,
+  addOwnedBus,
+  getSelectedBus,
+  setSelectedBus
+} from "./save.js";
+import { START, COURSES, BUSES, BUS_TYPES, findBus } from "./data.js";
 
 const modeNames = {
   career: "キャリアモード",
@@ -22,6 +32,9 @@ const titleCoinsEl = document.getElementById("title-coins");
 const toastEl = document.getElementById("toast");
 const modeNameEl = document.getElementById("game-mode-name");
 const courseListEl = document.getElementById("course-list");
+const shopListEl = document.getElementById("shop-list");
+const shopCoinsEl = document.getElementById("shop-coins");
+const shopMessageEl = document.getElementById("shop-message");
 const resultTitleEl = document.getElementById("result-title");
 const resultBaseEl = document.getElementById("result-base");
 const resultLengthEl = document.getElementById("result-length");
@@ -137,6 +150,85 @@ function updateRouteInfo() {
     arrows[index] + " " + info.name + " " + distance + "m (" + (info.index + 1) + "/" + info.total + ")";
 }
 
+function colorText(value) {
+  return "#" + value.toString(16).padStart(6, "0");
+}
+
+function renderShop() {
+  shopCoinsEl.textContent = "所持コイン：" + getCoins();
+  shopListEl.innerHTML = "";
+  const owned = getOwnedBuses();
+  const selected = getSelectedBus();
+
+  Object.keys(BUS_TYPES).forEach((type) => {
+    const title = document.createElement("div");
+    title.className = "shop-group-title";
+    title.textContent = BUS_TYPES[type].label;
+    shopListEl.appendChild(title);
+
+    BUSES.filter((item) => item.type === type).forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "bus-card";
+
+      const name = document.createElement("div");
+      name.className = "bus-name";
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = colorText(item.color);
+      name.appendChild(swatch);
+      name.appendChild(document.createTextNode(item.name));
+      card.appendChild(name);
+
+      const stats = document.createElement("div");
+      stats.innerHTML =
+        "最高速 " +
+        Math.round(item.maxSpeed * 3.6) +
+        "km/h<br>加速 ×" +
+        item.accel.toFixed(2) +
+        "　ブレーキ ×" +
+        item.brake.toFixed(2) +
+        "<br>曲がり ×" +
+        item.turn.toFixed(2);
+      card.appendChild(stats);
+
+      const price = document.createElement("div");
+      price.className = "bus-price";
+      price.textContent = item.price === 0 ? "無料" : item.price + " コイン";
+      card.appendChild(price);
+
+      const button = document.createElement("button");
+      const fullName = BUS_TYPES[item.type].label + " " + item.name;
+
+      if (selected === item.id) {
+        button.textContent = "使用中";
+        button.disabled = true;
+      } else if (owned.includes(item.id)) {
+        button.textContent = "使用する";
+        button.addEventListener("click", () => {
+          setSelectedBus(item.id);
+          shopMessageEl.textContent = "「" + fullName + "」を使用します";
+          renderShop();
+        });
+      } else {
+        button.textContent = "購入";
+        button.addEventListener("click", () => {
+          if (spendCoins(item.price)) {
+            addOwnedBus(item.id);
+            shopMessageEl.textContent = "「" + fullName + "」を購入しました";
+            updateTitleCoins();
+          } else {
+            shopMessageEl.textContent = "コインが足りません";
+          }
+          renderShop();
+        });
+      }
+
+      card.appendChild(button);
+      shopListEl.appendChild(card);
+    });
+  });
+}
+
 function initGame() {
   if (renderer) return;
   renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
@@ -146,7 +238,7 @@ function initGame() {
   scene.fog = new THREE.Fog(0x87ceeb, 80, 320);
   camera = new THREE.PerspectiveCamera(60, 1, 0.1, 600);
   world = createWorld(scene);
-  bus = createBus(0xf2c94c);
+  bus = createBus(findBus(getSelectedBus()));
   scene.add(bus);
   rig = createCameraRig(camera, bus);
   rules = createRules(world, bus, controls, handleEvent);
@@ -187,6 +279,10 @@ function loop() {
 function startGame() {
   initGame();
   resize();
+  const spec = findBus(getSelectedBus());
+  if (bus.userData.specId !== spec.id) {
+    applyBusSpec(bus, spec);
+  }
   gameTime = 0;
   pendingFinish = false;
   resetBus(bus, START.x, START.z, START.heading);
@@ -260,6 +356,10 @@ function showScreen(name) {
       settleRun();
     }
     stopGame();
+  }
+  if (name === "shop") {
+    shopMessageEl.textContent = "";
+    renderShop();
   }
 }
 
