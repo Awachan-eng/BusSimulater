@@ -61,6 +61,28 @@ export const COURSES = [
   { name: "長距離コース", stops: [0, 4, 5, 6, 3, 1, 2, 7] }
 ];
 
+export const BUS_TYPES = {
+  gas: { label: "ガソリンバス" },
+  hybrid: { label: "ハイブリッドバス" },
+  tour: { label: "観光バス" }
+};
+
+export const BUSES = [
+  { id: "gas1", type: "gas", name: "ベーシック", price: 0, color: 0xf2c94c, accent: 0xffffff, maxSpeed: 22, accel: 1.0, brake: 1.0, turn: 1.0 },
+  { id: "gas2", type: "gas", name: "スタンダード", price: 15000, color: 0xf2994a, accent: 0xffffff, maxSpeed: 24, accel: 1.1, brake: 1.05, turn: 1.0 },
+  { id: "gas3", type: "gas", name: "ハイパワー", price: 40000, color: 0xeb5757, accent: 0x222222, maxSpeed: 26, accel: 1.25, brake: 1.1, turn: 0.95 },
+  { id: "hybrid1", type: "hybrid", name: "エコ", price: 30000, color: 0x27ae60, accent: 0xffffff, maxSpeed: 22, accel: 1.0, brake: 1.15, turn: 1.1 },
+  { id: "hybrid2", type: "hybrid", name: "エコプラス", price: 60000, color: 0x6fcf97, accent: 0xffffff, maxSpeed: 24, accel: 1.1, brake: 1.2, turn: 1.15 },
+  { id: "hybrid3", type: "hybrid", name: "エコプレミアム", price: 110000, color: 0x2d9cdb, accent: 0xffffff, maxSpeed: 26, accel: 1.2, brake: 1.3, turn: 1.2 },
+  { id: "tour1", type: "tour", name: "クラシック", price: 50000, color: 0xf5f5f5, accent: 0x1565c0, maxSpeed: 24, accel: 0.85, brake: 0.9, turn: 0.85 },
+  { id: "tour2", type: "tour", name: "ゴールド", price: 100000, color: 0xe0b84c, accent: 0x6d4c00, maxSpeed: 28, accel: 0.95, brake: 0.95, turn: 0.9 },
+  { id: "tour3", type: "tour", name: "プレミアム", price: 200000, color: 0x9b51e0, accent: 0xffd54f, maxSpeed: 30, accel: 1.05, brake: 1.0, turn: 0.95 }
+];
+
+export function findBus(id) {
+  return BUSES.find((item) => item.id === id) || BUSES[0];
+}
+
 export function routeMultiplier(length) {
   const value = 1 + length * MULTIPLIER.perMeter;
   return Math.min(MULTIPLIER.max, Math.round(value * 10) / 10);
