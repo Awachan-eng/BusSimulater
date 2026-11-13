@@ -163,6 +163,7 @@ export function createBus(spec) {
 
   bus.userData.speed = 0;
   bus.userData.pedal = 0;
+  bus.userData.gear = "D";
   bus.userData.wheelValue = 0;
   bus.userData.cockpit = cockpit;
   bus.userData.wheel = cockpit.userData.wheel;
@@ -177,6 +178,7 @@ export function resetBus(bus, x, z, heading) {
   bus.rotation.y = heading;
   bus.userData.speed = 0;
   bus.userData.pedal = 0;
+  bus.userData.gear = "D";
   bus.userData.wheelValue = 0;
   bus.userData.wheel.rotation.z = 0;
 }
@@ -190,6 +192,7 @@ export function updateBus(bus, input, dt) {
   const drag = 1.5;
   const limit = 450;
   const wheelMax = (STEER.maxDegrees * Math.PI) / 180;
+  const reverse = bus.userData.gear === "R";
 
   let speed = bus.userData.speed;
   let pedal = bus.userData.pedal;
@@ -202,19 +205,38 @@ export function updateBus(bus, input, dt) {
   }
 
   if (pedal > 0) {
-    speed += accel * pedal * (1 - speed / maxSpeed) * dt;
+    if (reverse) {
+      speed -= DRIVE.reverseAccel * pedal * (1 - Math.abs(speed) / DRIVE.reverseMax) * dt;
+    } else {
+      speed += accel * pedal * (1 - speed / maxSpeed) * dt;
+    }
   }
+
   if (input.brake > 0) {
-    speed -= brakePower * input.brake * dt;
+    if (speed > 0) {
+      speed = Math.max(0, speed - brakePower * input.brake * dt);
+    } else if (speed < 0) {
+      speed = Math.min(0, speed + brakePower * input.brake * dt);
+    }
   }
+
   if (input.throttle === 0 && input.brake === 0) {
-    speed -= drag * dt;
+    if (speed > 0) {
+      speed = Math.max(0, speed - drag * dt);
+    } else if (speed < 0) {
+      speed = Math.min(0, speed + drag * dt);
+    }
   }
 
-  speed = Math.max(0, Math.min(maxSpeed, speed));
+  if (reverse) {
+    speed = Math.max(-DRIVE.reverseMax, Math.min(0, speed));
+  } else {
+    speed = Math.max(0, Math.min(maxSpeed, speed));
+  }
 
-  const turnFactor = Math.min(1, speed / 3);
-  const turnRate = turnBase * (1 - DRIVE.highSpeedLoss * (speed / maxSpeed));
+  const direction = speed < 0 ? -1 : 1;
+  const turnFactor = Math.min(1, Math.abs(speed) / 3) * direction;
+  const turnRate = turnBase * (1 - DRIVE.highSpeedLoss * (Math.abs(speed) / maxSpeed));
   bus.rotation.y -= input.steer * turnRate * turnFactor * dt;
 
   const heading = bus.rotation.y;
