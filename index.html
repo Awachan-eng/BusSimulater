@@ -96,7 +96,7 @@ window.addEventListener("error", function (e) {
 </div>
 <div class="hud-group center">
 <span class="blinker-ind" id="blinker-left">◀</span>
-<span class="hud-pill" id="speed-display">0 km/h</span>
+<span class="hud-pill" id="speed-display">D　0 km/h</span>
 <span class="hud-pill" id="run-coins">コイン 0</span>
 <span class="hud-pill" id="passenger-count">乗客 0</span>
 <span class="hud-pill" id="route-info"></span>
@@ -112,9 +112,15 @@ window.addEventListener("error", function (e) {
 </div>
 <div id="steer-wheel"><span id="steer-marker"></span></div>
 </div>
+<div class="pad center-pad">
+<div class="pad" id="gear-pad">
+<button class="drive-btn gear" id="btn-gear-d">D</button>
+<button class="drive-btn gear reverse" id="btn-gear-r">R</button>
+</div>
 <div class="pad" id="blinker-pad">
 <button class="drive-btn blinker" id="btn-blink-left">◀左</button>
 <button class="drive-btn blinker" id="btn-blink-right">右▶</button>
+</div>
 </div>
 <div class="pad">
 <button class="drive-btn brake" id="btn-brake">ブレーキ</button>
