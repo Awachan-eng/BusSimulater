@@ -45,6 +45,8 @@ const blinkLeftEl = document.getElementById("blinker-left");
 const blinkRightEl = document.getElementById("blinker-right");
 const blinkLeftButton = document.getElementById("btn-blink-left");
 const blinkRightButton = document.getElementById("btn-blink-right");
+const gearDButton = document.getElementById("btn-gear-d");
+const gearRButton = document.getElementById("btn-gear-r");
 const cameraButton = document.getElementById("btn-camera");
 const controlButton = document.getElementById("btn-control");
 const retryButton = document.getElementById("btn-retry");
@@ -129,6 +131,25 @@ function updateBlinkerDisplay() {
   blinkRightEl.classList.toggle("on", side === "right");
   blinkLeftButton.classList.toggle("on", side === "left");
   blinkRightButton.classList.toggle("on", side === "right");
+}
+
+function updateGearDisplay() {
+  const gear = bus ? bus.userData.gear : "D";
+  gearDButton.classList.toggle("on", gear === "D");
+  gearRButton.classList.toggle("on", gear === "R");
+}
+
+function syncGear() {
+  const wanted = controls.input.gear;
+  if (wanted === bus.userData.gear) return;
+  if (Math.abs(bus.userData.speed) < 0.5) {
+    bus.userData.gear = wanted;
+    bus.userData.speed = 0;
+    bus.userData.pedal = 0;
+  } else {
+    controls.input.gear = bus.userData.gear;
+    showToast("停車してから切り替えてください", "neutral");
+  }
 }
 
 function updateRouteInfo() {
@@ -261,14 +282,17 @@ function loop() {
   const dt = Math.min(clock.getDelta(), 0.05);
   gameTime += dt;
   controls.update(dt);
+  syncGear();
   updateBus(bus, controls.input, dt);
   world.update(gameTime);
   rules.update(gameTime);
   stops.update(dt);
   rig.update(dt);
-  speedEl.textContent = Math.round(bus.userData.speed * 3.6) + " km/h";
+  const kmh = Math.round(Math.abs(bus.userData.speed) * 3.6);
+  speedEl.textContent = bus.userData.gear + "　" + kmh + " km/h";
   passengerEl.textContent = "乗客 " + bus.userData.passengers;
   updateBlinkerDisplay();
+  updateGearDisplay();
   updateRouteInfo();
   renderer.render(scene, camera);
   if (pendingFinish) {
@@ -292,6 +316,7 @@ function startGame() {
   runCoinsEl.textContent = "コイン 0";
   passengerEl.textContent = "乗客 0";
   toastEl.classList.remove("show");
+  updateGearDisplay();
   rig.snap();
   clock.getDelta();
   if (!running) {
