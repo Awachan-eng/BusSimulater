@@ -288,7 +288,7 @@ button.small {
 }
 
 #speed-display {
-  min-width: 80px;
+  min-width: 96px;
   text-align: right;
 }
 
@@ -360,6 +360,13 @@ button.small {
   align-items: flex-end;
 }
 
+.center-pad {
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+#gear-pad,
 #blinker-pad {
   gap: 8px;
 }
@@ -394,6 +401,23 @@ button.small {
 .drive-btn.blinker.on {
   background: #f2994a;
   opacity: 1;
+}
+
+.drive-btn.gear {
+  width: 72px;
+  height: 44px;
+  font-size: 22px;
+  font-weight: bold;
+  background: #3b4a63;
+}
+
+.drive-btn.gear.on {
+  background: #2f80ed;
+  opacity: 1;
+}
+
+.drive-btn.gear.reverse.on {
+  background: #eb5757;
 }
 
 .drive-btn:active {
