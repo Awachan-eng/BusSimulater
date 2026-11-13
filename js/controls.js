@@ -3,7 +3,7 @@ import { STEER } from "./data.js";
 export function createControls() {
   const touch = { left: false, right: false, accel: false, brake: false };
   const key = { left: false, right: false, accel: false, brake: false };
-  const input = { throttle: 0, brake: 0, steer: 0, blinker: null };
+  const input = { throttle: 0, brake: 0, steer: 0, blinker: null, gear: "D" };
 
   const keyMap = {
     ArrowLeft: "left",
@@ -61,12 +61,25 @@ export function createControls() {
     });
   }
 
+  function bindGear(id, gear) {
+    const el = document.getElementById(id);
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      input.gear = gear;
+    });
+    el.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
+  }
+
   bindButton("btn-left", "left");
   bindButton("btn-right", "right");
   bindButton("btn-accel", "accel");
   bindButton("btn-brake", "brake");
   bindBlinker("btn-blink-left", "left");
   bindBlinker("btn-blink-right", "right");
+  bindGear("btn-gear-d", "D");
+  bindGear("btn-gear-r", "R");
 
   function pointerAngle(e) {
     return Math.atan2(e.clientY - centerY, e.clientX - centerX);
@@ -112,6 +125,14 @@ export function createControls() {
     }
     if (e.code === "KeyE" && !e.repeat) {
       toggleBlinker("right");
+      return;
+    }
+    if (e.code === "KeyR" && !e.repeat) {
+      input.gear = "R";
+      return;
+    }
+    if (e.code === "KeyF" && !e.repeat) {
+      input.gear = "D";
       return;
     }
     const name = keyMap[e.code];
@@ -167,6 +188,7 @@ export function createControls() {
     input.brake = 0;
     input.steer = 0;
     input.blinker = null;
+    input.gear = "D";
     showWheel();
   }
 
