@@ -23,6 +23,242 @@ const modeNames = {
   free: "フリーモード"
 };
 
+function createAudio() {
+  const MASTER = 0.6;
+  let ctx = null;
+  let master = null;
+  let engine = null;
+  let enabled = getSetting("sound") !== false;
+  let tickTimer = 0;
+  let tickPhase = 0;
+  let lastBlinker = null;
+  let beepTimer = 0;
+
+  function buildEngine() {
+    const osc1 = ctx.createOscillator();
+    osc1.type = "sawtooth";
+    const osc2 = ctx.createOscillator();
+    osc2.type = "triangle";
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 400;
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+    osc1.start();
+    osc2.start();
+    engine = { osc1: osc1, osc2: osc2, filter: filter, gain: gain, kind: "gas" };
+  }
+
+  function unlock() {
+    if (ctx) {
+      if (ctx.state === "suspended") ctx.resume();
+      return;
+    }
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return;
+    ctx = new Ctor();
+    master = ctx.createGain();
+    master.gain.value = enabled ? MASTER : 0;
+    master.connect(ctx.destination);
+    buildEngine();
+  }
+
+  function suspend() {
+    if (ctx && ctx.state === "running") ctx.suspend();
+  }
+
+  function setEnabled(on) {
+    enabled = on;
+    if (master) {
+      master.gain.setTargetAtTime(on ? MASTER : 0, ctx.currentTime, 0.05);
+    }
+  }
+
+  function isEnabled() {
+    return enabled;
+  }
+
+  function tone(freq, duration, type, volume, when, slideTo) {
+    if (!ctx || !enabled) return;
+    const start = ctx.currentTime + (when || 0);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, start);
+    if (slideTo) {
+      osc.frequency.exponentialRampToValueAtTime(slideTo, start + duration);
+    }
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start(start);
+    osc.stop(start + duration + 0.05);
+  }
+
+  function noise(duration, volume, cutoff) {
+    if (!ctx || !enabled) return;
+    const size = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, size, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < size; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / size);
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = cutoff;
+    const gain = ctx.createGain();
+    gain.gain.value = volume;
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+    source.start();
+  }
+
+  function coin() {
+    tone(988, 0.12, "square", 0.15, 0);
+    tone(1319, 0.25, "square", 0.15, 0.09);
+  }
+
+  function chime() {
+    tone(660, 0.18, "sine", 0.3, 0);
+    tone(880, 0.32, "sine", 0.3, 0.12);
+  }
+
+  function doorChime() {
+    tone(520, 0.25, "sine", 0.25, 0);
+  }
+
+  function buzz() {
+    tone(150, 0.35, "sawtooth", 0.25, 0, 90);
+  }
+
+  function crash() {
+    noise(0.5, 0.7, 600);
+    tone(80, 0.4, "sine", 0.6, 0, 40);
+  }
+
+  function gearClick() {
+    tone(300, 0.05, "square", 0.12, 0);
+  }
+
+  function fanfare() {
+    tone(523, 0.18, "square", 0.18, 0);
+    tone(659, 0.18, "square", 0.18, 0.16);
+    tone(784, 0.18, "square", 0.18, 0.32);
+    tone(1047, 0.5, "square", 0.2, 0.48);
+  }
+
+  function playEvent(event) {
+    if (event.text === "建物に衝突") {
+      crash();
+    } else if (event.amount < 0) {
+      buzz();
+    } else if (event.text === "乗客が乗車") {
+      chime();
+    } else if (event.amount > 0) {
+      coin();
+    } else if (event.text.indexOf("降車") >= 0) {
+      doorChime();
+    }
+  }
+
+  function updateEngine(bus) {
+    if (!ctx || !engine) return;
+    const now = ctx.currentTime;
+    const spec = findBus(bus.userData.specId);
+    const ratio = Math.min(1, Math.abs(bus.userData.speed) / bus.userData.stats.maxSpeed);
+    const pedal = bus.userData.pedal;
+
+    let idle = 38;
+    let range = 70;
+    let volume = 0.12;
+    if (spec.type === "hybrid") {
+      idle = 52;
+      range = 90;
+      volume = 0.05;
+    } else if (spec.type === "tour") {
+      idle = 30;
+      range = 55;
+      volume = 0.15;
+    }
+
+    if (engine.kind !== spec.type) {
+      engine.kind = spec.type;
+      engine.osc1.type = spec.type === "hybrid" ? "triangle" : "sawtooth";
+    }
+
+    const pitch = idle + ratio * range + pedal * 12;
+    engine.osc1.frequency.setTargetAtTime(pitch, now, 0.1);
+    engine.osc2.frequency.setTargetAtTime(pitch * 2.01, now, 0.1);
+    engine.filter.frequency.setTargetAtTime(250 + ratio * 600 + pedal * 250, now, 0.1);
+    engine.gain.gain.setTargetAtTime(volume * (0.6 + 0.5 * ratio + 0.4 * pedal), now, 0.1);
+  }
+
+  function stopEngine() {
+    if (ctx && engine) {
+      engine.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+    }
+    tickTimer = 0;
+    lastBlinker = null;
+    beepTimer = 0;
+  }
+
+  function updateBlinker(side, dt) {
+    if (!side) {
+      tickTimer = 0;
+      lastBlinker = null;
+      return;
+    }
+    if (side !== lastBlinker) {
+      lastBlinker = side;
+      tickTimer = 0;
+      tickPhase = 0;
+    }
+    tickTimer -= dt;
+    if (tickTimer <= 0) {
+      tickTimer += 0.4;
+      tone(tickPhase === 0 ? 1500 : 1100, 0.04, "square", 0.12, 0);
+      tickPhase = 1 - tickPhase;
+    }
+  }
+
+  function updateReverse(gear, dt) {
+    if (gear !== "R") {
+      beepTimer = 0;
+      return;
+    }
+    beepTimer -= dt;
+    if (beepTimer <= 0) {
+      beepTimer += 0.9;
+      tone(1000, 0.2, "square", 0.1, 0);
+    }
+  }
+
+  return {
+    unlock: unlock,
+    suspend: suspend,
+    setEnabled: setEnabled,
+    isEnabled: isEnabled,
+    playEvent: playEvent,
+    gearClick: gearClick,
+    fanfare: fanfare,
+    updateEngine: updateEngine,
+    stopEngine: stopEngine,
+    updateBlinker: updateBlinker,
+    updateReverse: updateReverse
+  };
+}
+
+const audio = createAudio();
+
 const canvas = document.getElementById("game-canvas");
 const speedEl = document.getElementById("speed-display");
 const runCoinsEl = document.getElementById("run-coins");
@@ -49,6 +285,7 @@ const gearDButton = document.getElementById("btn-gear-d");
 const gearRButton = document.getElementById("btn-gear-r");
 const cameraButton = document.getElementById("btn-camera");
 const controlButton = document.getElementById("btn-control");
+const soundButton = document.getElementById("btn-sound");
 const retryButton = document.getElementById("btn-retry");
 const controls = createControls();
 const clock = new THREE.Clock();
@@ -88,6 +325,7 @@ function showToast(text, kind) {
 
 function handleEvent(event) {
   runCoinsEl.textContent = "コイン " + totalRunCoins();
+  audio.playEvent(event);
   if (event.amount === 0) {
     showToast(event.text, "neutral");
   } else if (event.amount > 0) {
@@ -125,6 +363,15 @@ function applyControlMode(mode) {
   });
 }
 
+function applySound(on) {
+  audio.setEnabled(on);
+  setSetting("sound", on);
+  document.querySelectorAll("[data-sound]").forEach((btn) => {
+    btn.classList.toggle("selected", (btn.dataset.sound === "on") === on);
+  });
+  soundButton.textContent = on ? "音：ON" : "音：OFF";
+}
+
 function updateBlinkerDisplay() {
   const side = controls.input.blinker;
   blinkLeftEl.classList.toggle("on", side === "left");
@@ -146,6 +393,7 @@ function syncGear() {
     bus.userData.gear = wanted;
     bus.userData.speed = 0;
     bus.userData.pedal = 0;
+    audio.gearClick();
   } else {
     controls.input.gear = bus.userData.gear;
     showToast("停車してから切り替えてください", "neutral");
@@ -288,6 +536,9 @@ function loop() {
   rules.update(gameTime);
   stops.update(dt);
   rig.update(dt);
+  audio.updateEngine(bus);
+  audio.updateBlinker(controls.input.blinker, dt);
+  audio.updateReverse(bus.userData.gear, dt);
   const kmh = Math.round(Math.abs(bus.userData.speed) * 3.6);
   speedEl.textContent = bus.userData.gear + "　" + kmh + " km/h";
   passengerEl.textContent = "乗客 " + bus.userData.passengers;
@@ -329,6 +580,7 @@ function stopGame() {
   running = false;
   cancelAnimationFrame(frameId);
   controls.reset();
+  audio.stopEngine();
   updateBlinkerDisplay();
 }
 
@@ -355,6 +607,7 @@ function finishRoute() {
   stops.reset();
   running = false;
   showScreen("result");
+  audio.fanfare();
   updateTitleCoins();
 }
 
@@ -392,6 +645,7 @@ function startMode(mode, route) {
   currentMode = mode;
   currentRoute = route;
   modeNameEl.textContent = route ? route.label : modeNames[mode];
+  audio.unlock();
   enterLandscape();
   showScreen("game");
 }
@@ -442,6 +696,12 @@ document.querySelectorAll("[data-control]").forEach((btn) => {
   });
 });
 
+document.querySelectorAll("[data-sound]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    applySound(btn.dataset.sound === "on");
+  });
+});
+
 retryButton.addEventListener("click", () => {
   startMode(currentMode, currentRoute);
 });
@@ -454,6 +714,23 @@ cameraButton.addEventListener("click", () => {
 controlButton.addEventListener("click", () => {
   applyControlMode(controls.getMode() === "button" ? "wheel" : "button");
   controlButton.blur();
+});
+
+soundButton.addEventListener("click", () => {
+  applySound(!audio.isEnabled());
+  soundButton.blur();
+});
+
+document.addEventListener("pointerdown", () => {
+  audio.unlock();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    audio.suspend();
+  } else {
+    audio.unlock();
+  }
 });
 
 document.addEventListener("keydown", (e) => {
@@ -469,5 +746,6 @@ window.addEventListener("orientationchange", () => {
 
 createCourseButtons();
 applyControlMode(getSetting("controlMode") === "wheel" ? "wheel" : "button");
+applySound(audio.isEnabled());
 updateTitleCoins();
 showScreen("title");
