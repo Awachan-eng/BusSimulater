@@ -23,6 +23,25 @@ const modeNames = {
   free: "フリーモード"
 };
 
+const ENGINE_PROFILES = {
+  gas: { rumble: 0.7, tone: 0.3, clatter: 0.1, hum: 0, volume: 0.5, fire: 2 },
+  hybrid: { rumble: 0.2, tone: 0.05, clatter: 0, hum: 0.12, volume: 0.4, fire: 2 },
+  tour: { rumble: 0.9, tone: 0.4, clatter: 0.12, hum: 0, volume: 0.6, fire: 1.7 }
+};
+
+const SHIFT_POINTS = [0.12, 0.26, 0.45, 0.68];
+
+function gearInfo(ratio) {
+  let index = 0;
+  while (index < SHIFT_POINTS.length && ratio >= SHIFT_POINTS[index]) {
+    index += 1;
+  }
+  const lower = index === 0 ? 0 : SHIFT_POINTS[index - 1];
+  const upper = index < SHIFT_POINTS.length ? SHIFT_POINTS[index] : 1;
+  const r = Math.max(0, Math.min(1, (ratio - lower) / (upper - lower)));
+  return { index: index, r: r };
+}
+
 function createAudio() {
   const MASTER = 0.6;
   let ctx = null;
@@ -34,23 +53,112 @@ function createAudio() {
   let lastBlinker = null;
   let beepTimer = 0;
 
+  function makeNoiseBuffer(kind) {
+    const length = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    const fade = 256;
+    let last = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      let value = white;
+      if (kind === "brown") {
+        last = (last + 0.02 * white) / 1.02;
+        value = last * 3.5;
+      }
+      let edge = 1;
+      if (i < fade) edge = i / fade;
+      if (i > length - fade) edge = (length - i) / fade;
+      data[i] = value * edge;
+    }
+    return buffer;
+  }
+
   function buildEngine() {
-    const osc1 = ctx.createOscillator();
-    osc1.type = "sawtooth";
-    const osc2 = ctx.createOscillator();
-    osc2.type = "triangle";
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 400;
-    const gain = ctx.createGain();
-    gain.gain.value = 0;
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(gain);
-    gain.connect(master);
-    osc1.start();
-    osc2.start();
-    engine = { osc1: osc1, osc2: osc2, filter: filter, gain: gain, kind: "gas" };
+    const output = ctx.createGain();
+    output.gain.value = 0;
+    output.connect(master);
+
+    const lfo = ctx.createOscillator();
+    lfo.type = "sawtooth";
+    lfo.frequency.value = 25;
+
+    const rumbleSource = ctx.createBufferSource();
+    rumbleSource.buffer = makeNoiseBuffer("brown");
+    rumbleSource.loop = true;
+    const rumbleFilter = ctx.createBiquadFilter();
+    rumbleFilter.type = "lowpass";
+    rumbleFilter.frequency.value = 300;
+    const rumbleAm = ctx.createGain();
+    rumbleAm.gain.value = 0.5;
+    const rumbleDepth = ctx.createGain();
+    rumbleDepth.gain.value = 0.5;
+    const rumbleLevel = ctx.createGain();
+    rumbleLevel.gain.value = 0;
+    rumbleSource.connect(rumbleFilter);
+    rumbleFilter.connect(rumbleAm);
+    rumbleAm.connect(rumbleLevel);
+    rumbleLevel.connect(output);
+    lfo.connect(rumbleDepth);
+    rumbleDepth.connect(rumbleAm.gain);
+
+    const toneOsc = ctx.createOscillator();
+    toneOsc.type = "sawtooth";
+    toneOsc.frequency.value = 25;
+    const toneFilter = ctx.createBiquadFilter();
+    toneFilter.type = "lowpass";
+    toneFilter.frequency.value = 220;
+    const toneLevel = ctx.createGain();
+    toneLevel.gain.value = 0;
+    toneOsc.connect(toneFilter);
+    toneFilter.connect(toneLevel);
+    toneLevel.connect(output);
+
+    const clatterSource = ctx.createBufferSource();
+    clatterSource.buffer = makeNoiseBuffer("white");
+    clatterSource.loop = true;
+    const clatterFilter = ctx.createBiquadFilter();
+    clatterFilter.type = "bandpass";
+    clatterFilter.frequency.value = 1100;
+    clatterFilter.Q.value = 1.2;
+    const clatterAm = ctx.createGain();
+    clatterAm.gain.value = 0.5;
+    const clatterDepth = ctx.createGain();
+    clatterDepth.gain.value = 0.5;
+    const clatterLevel = ctx.createGain();
+    clatterLevel.gain.value = 0;
+    clatterSource.connect(clatterFilter);
+    clatterFilter.connect(clatterAm);
+    clatterAm.connect(clatterLevel);
+    clatterLevel.connect(output);
+    lfo.connect(clatterDepth);
+    clatterDepth.connect(clatterAm.gain);
+
+    const humOsc = ctx.createOscillator();
+    humOsc.type = "sine";
+    humOsc.frequency.value = 150;
+    const humLevel = ctx.createGain();
+    humLevel.gain.value = 0;
+    humOsc.connect(humLevel);
+    humLevel.connect(output);
+
+    lfo.start();
+    rumbleSource.start();
+    toneOsc.start();
+    clatterSource.start();
+    humOsc.start();
+
+    engine = {
+      output: output,
+      lfo: lfo,
+      rumbleFilter: rumbleFilter,
+      rumbleLevel: rumbleLevel,
+      toneOsc: toneOsc,
+      toneLevel: toneLevel,
+      clatterLevel: clatterLevel,
+      humOsc: humOsc,
+      humLevel: humLevel
+    };
   }
 
   function unlock() {
@@ -174,37 +282,40 @@ function createAudio() {
     if (!ctx || !engine) return;
     const now = ctx.currentTime;
     const spec = findBus(bus.userData.specId);
-    const ratio = Math.min(1, Math.abs(bus.userData.speed) / bus.userData.stats.maxSpeed);
+    const profile = ENGINE_PROFILES[spec.type] || ENGINE_PROFILES.gas;
+    const speed = Math.abs(bus.userData.speed);
     const pedal = bus.userData.pedal;
+    const ratio = Math.min(1, speed / bus.userData.stats.maxSpeed);
+    const reverse = bus.userData.gear === "R";
 
-    let idle = 38;
-    let range = 70;
-    let volume = 0.12;
-    if (spec.type === "hybrid") {
-      idle = 52;
-      range = 90;
-      volume = 0.05;
-    } else if (spec.type === "tour") {
-      idle = 30;
-      range = 55;
-      volume = 0.15;
+    let rpm;
+    if (reverse) {
+      rpm = 750 + Math.min(1, speed / 5) * 1100;
+    } else if (spec.type === "hybrid") {
+      rpm = 700 + ratio * 1000;
+    } else {
+      const info = gearInfo(ratio);
+      rpm = info.index === 0 ? 750 + info.r * 1450 : 1100 + info.r * 1100;
     }
+    rpm += pedal * 150;
 
-    if (engine.kind !== spec.type) {
-      engine.kind = spec.type;
-      engine.osc1.type = spec.type === "hybrid" ? "triangle" : "sawtooth";
-    }
+    const fire = (rpm / 60) * profile.fire;
+    const load = Math.min(1, pedal + ratio * 0.5);
 
-    const pitch = idle + ratio * range + pedal * 12;
-    engine.osc1.frequency.setTargetAtTime(pitch, now, 0.1);
-    engine.osc2.frequency.setTargetAtTime(pitch * 2.01, now, 0.1);
-    engine.filter.frequency.setTargetAtTime(250 + ratio * 600 + pedal * 250, now, 0.1);
-    engine.gain.gain.setTargetAtTime(volume * (0.6 + 0.5 * ratio + 0.4 * pedal), now, 0.1);
+    engine.lfo.frequency.setTargetAtTime(fire, now, 0.08);
+    engine.toneOsc.frequency.setTargetAtTime(fire, now, 0.08);
+    engine.rumbleFilter.frequency.setTargetAtTime(220 + (rpm - 700) * 0.35, now, 0.08);
+    engine.rumbleLevel.gain.setTargetAtTime(profile.rumble, now, 0.1);
+    engine.toneLevel.gain.setTargetAtTime(profile.tone, now, 0.1);
+    engine.clatterLevel.gain.setTargetAtTime(profile.clatter * (0.5 + load), now, 0.1);
+    engine.humOsc.frequency.setTargetAtTime(140 + ratio * 600, now, 0.1);
+    engine.humLevel.gain.setTargetAtTime(profile.hum * (0.3 + ratio), now, 0.1);
+    engine.output.gain.setTargetAtTime(profile.volume * (0.55 + 0.25 * ratio + 0.35 * pedal), now, 0.1);
   }
 
   function stopEngine() {
     if (ctx && engine) {
-      engine.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+      engine.output.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
     }
     tickTimer = 0;
     lastBlinker = null;
