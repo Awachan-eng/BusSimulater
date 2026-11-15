@@ -189,6 +189,8 @@ export function updateBus(bus, input, dt) {
   const accel = DRIVE.accel * stats.accel;
   const brakePower = DRIVE.brake * stats.brake;
   const turnBase = DRIVE.turnRate * stats.turn;
+  const reverseMax = DRIVE.reverseMax || 5;
+  const reverseAccel = DRIVE.reverseAccel || 2.5;
   const drag = 1.5;
   const limit = 450;
   const wheelMax = (STEER.maxDegrees * Math.PI) / 180;
@@ -206,7 +208,7 @@ export function updateBus(bus, input, dt) {
 
   if (pedal > 0) {
     if (reverse) {
-      speed -= DRIVE.reverseAccel * pedal * (1 - Math.abs(speed) / DRIVE.reverseMax) * dt;
+      speed -= reverseAccel * pedal * (1 - Math.abs(speed) / reverseMax) * dt;
     } else {
       speed += accel * pedal * (1 - speed / maxSpeed) * dt;
     }
@@ -229,9 +231,16 @@ export function updateBus(bus, input, dt) {
   }
 
   if (reverse) {
-    speed = Math.max(-DRIVE.reverseMax, Math.min(0, speed));
+    speed = Math.max(-reverseMax, Math.min(0, speed));
   } else {
     speed = Math.max(0, Math.min(maxSpeed, speed));
+  }
+
+  if (!Number.isFinite(speed)) {
+    speed = 0;
+  }
+  if (!Number.isFinite(pedal)) {
+    pedal = 0;
   }
 
   const direction = speed < 0 ? -1 : 1;
