@@ -9,7 +9,16 @@ export const DRIVE = {
   accel: 3.6,
   pedalRise: 2.2,
   pedalFall: 5,
-  brake: 10
+  brake: 10,
+  reverseMax: 5,
+  reverseAccel: 2.5,
+  reverseDelay: 0.8
+};
+
+export const COLLISION = {
+  penalty: 100,
+  cooldown: 2,
+  radius: 1.4
 };
 
 export const CITY = {
